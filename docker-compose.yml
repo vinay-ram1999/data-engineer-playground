@@ -1,25 +1,45 @@
-version: "3"
+version: "3.9"
 
 services:
-  # Nessie Catalog Server Using In-Memory Store
+  # Postgres DB for nessie backend
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    environment:
+      POSTGRES_DB:   nessie
+      POSTGRES_USER: nessie
+      POSTGRES_PASSWORD: nessie
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "nessie"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - lakehouse-network
+
+  # Nessie Catalog Server Using Postgres DB
   nessie:
-    image: projectnessie/nessie@sha256:8013ade41c45f714341613ab81fdccec685997fb50766db872fccc9240107fb6
+    image: ghcr.io/projectnessie/nessie:0.83.1
     container_name: nessie
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "19120:19120"
     environment:
       - QUARKUS_PROFILE=prod
       - QUARKUS_HTTP_PORT=19120
-      - QUARKUS_LOG_CONSOLE_FORMAT=%d{yyyy-MM-dd HH:mm:ss} %-5p [%c{1.}] (%t) %s%e%n
-      - QUARKUS_LOG_LEVEL=INFO
-      - QUARKUS_DATASOURCE_DB_KIND=rocksdb
-      - QUARKUS_DATASOURCE_JDBC_URL=jdbc:rocksdb:file:///nessie/data
+      - NESSIE_VERSION_STORE_TYPE=JDBC
+      - QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://postgres:5432/nessie
       - QUARKUS_DATASOURCE_USERNAME=nessie
       - QUARKUS_DATASOURCE_PASSWORD=nessie
-    volumes:
-      - ./nessie:/nessie/data  # Mount local directory to persist RocksDB data
-    ports:
-      - "19120:19120"  # Expose Nessie API port
+      - QUARKUS_LOG_LEVEL=INFO
     networks:
-      lakehouse-network:
+      - lakehouse-network
   
   # Minio Storage Server
   minio:
@@ -37,7 +57,7 @@ services:
       timeout: 20s
       retries: 3
     volumes:
-      - ./data:/data  # Mount the local folder to container
+      - ./data:/data
     entrypoint: >
       /bin/sh -c "
       minio server /data --console-address ':9001' &
@@ -48,7 +68,7 @@ services:
       mc cp /data/* myminio/seed/;
       tail -f /dev/null"
     networks:
-      lakehouse-network:
+      - lakehouse-network
   
   # Spark
   spark:
@@ -69,9 +89,9 @@ services:
       - SPARK_MASTER_WEBUI_PORT=8080
       - SPARK_WORKER_WEBUI_PORT=8081
       - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=/tmp/spark-events
-      - SPARK_HOME=/opt/spark  # Set SPARK_HOME explicitly
+      - SPARK_HOME=/opt/spark
     volumes:
-      - ./spark:/workspace/seed  # Volume for seeding data into the container
+      - ./spark:/workspace/seed
     container_name: spark
     entrypoint: >
       /bin/bash -c "
@@ -83,7 +103,11 @@ services:
       tail -f /dev/null
       "
     networks:
-      lakehouse-network:
+      - lakehouse-network
 
 networks:
   lakehouse-network:
+    driver: bridge
+
+volumes:
+  pgdata:
