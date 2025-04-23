@@ -1,4 +1,4 @@
-version: "3.9"
+# version: "3.9"
 
 services:
   # Postgres DB for nessie backend
@@ -74,6 +74,10 @@ services:
   spark:
     platform: linux/x86_64
     image: alexmerced/spark35nb@sha256:a097787b7cda538b668e320d660c24bec7e6a9691a8b0b971b26c96c6661091f
+    container_name: spark
+    depends_on:
+      - minio
+      - nessie
     env_file:
       - .env
     ports: 
@@ -92,16 +96,24 @@ services:
       - SPARK_HOME=/opt/spark
     volumes:
       - ./spark:/workspace/seed
-    container_name: spark
-    entrypoint: >
-      /bin/bash -c "
-      /opt/spark/sbin/start-master.sh && \
-      /opt/spark/sbin/start-worker.sh spark://localhost:7077 && \
-      mkdir -p /tmp/spark-events && \
-      start-history-server.sh && \
-      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password='' && \
-      tail -f /dev/null
-      "
+      # - ./requirements.txt:/workspace/seed/requirements.txt
+    entrypoint:
+      - /bin/bash
+      - -c
+      # - python3 -m pip install -r /workspace/seed/requirements.txt
+      - |
+        /opt/spark/sbin/start-master.sh && \
+        /opt/spark/sbin/start-worker.sh spark://localhost:7077 && \
+        mkdir -p /tmp/spark-events && \
+        start-history-server.sh && \
+        jupyter lab \
+          --ip=0.0.0.0 \
+          --port=8888 \
+          --no-browser \
+          --allow-root \
+          --NotebookApp.token='' \
+          --NotebookApp.password='' && \
+        tail -f /dev/null
     networks:
       - lakehouse-network
 
