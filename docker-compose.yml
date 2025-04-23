@@ -3,7 +3,7 @@ version: "3"
 services:
   # Nessie Catalog Server Using In-Memory Store
   nessie:
-    image: projectnessie/nessie:latest
+    image: projectnessie/nessie@sha256:8013ade41c45f714341613ab81fdccec685997fb50766db872fccc9240107fb6
     container_name: nessie
     environment:
       - QUARKUS_PROFILE=prod
@@ -23,7 +23,7 @@ services:
   
   # Minio Storage Server
   minio:
-    image: minio/minio:latest
+    image: minio/minio@sha256:8834ae47a2de3509b83e0e70da9369c24bbbc22de42f2a2eddc530eee88acd1b
     container_name: minio
     environment:
       - MINIO_ROOT_USER=minioadmin
@@ -53,7 +53,7 @@ services:
   # Spark
   spark:
     platform: linux/x86_64
-    image: alexmerced/spark35nb:latest
+    image: alexmerced/spark35nb@sha256:a097787b7cda538b668e320d660c24bec7e6a9691a8b0b971b26c96c6661091f
     env_file:
       - .env
     ports: 
@@ -71,7 +71,7 @@ services:
       - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=/tmp/spark-events
       - SPARK_HOME=/opt/spark  # Set SPARK_HOME explicitly
     volumes:
-      - ./spark:/workspace/seed-data  # Volume for seeding data into the container
+      - ./spark:/workspace/seed  # Volume for seeding data into the container
     container_name: spark
     entrypoint: >
       /bin/bash -c "
