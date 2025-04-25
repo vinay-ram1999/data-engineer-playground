@@ -5,7 +5,15 @@
 */__pycache__/*
 
 data/*
+!data/flights-1m.parquet
 
 *.csv
 
 .env
+
+spark/*
+!spark/__init__.py
+!spark/iceberg_setup.py
+!spark/iceberg_DDL.ipynb
+
+
