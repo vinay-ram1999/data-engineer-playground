@@ -9,16 +9,18 @@ REQUIRED_ENV_VARS = AWS_REGION MINIO_REGION AWS_DEFAULT_REGION AWS_ACCESS_KEY_ID
 SERVICES_NESSIE = nessie
 SERVICES_MINIO = minio
 SERVICES_SPARK = spark
+SERVICES_TRINO = trino
 # SERVICES_ALL is intentionally empty, meaning 'no specific services passed' to docker compose
 SERVICES_ALL =
 
 # List valid service group names for help and validation
-VALID_SERVICES = nessie minio spark all
+VALID_SERVICES = nessie minio spark trino all
 
 # Descriptions for each service group (used in help message)
 DESC_NESSIE = Nessie Catalog with PostgreSQL database as storage (Depends on PostgreSQL)
 DESC_MINIO = MinIO S3-compatible storage
 DESC_SPARK = Spark cluster with Jupyter Notebook (Depends on Nessie, MinIO)
+DESC_TRINO = Trino distributed SQL query engine for big data analytics
 DESC_ALL = All core services
 
 # --- Makefile Configuration ---
@@ -27,9 +29,9 @@ DESC_ALL = All core services
 
 # Includes aliases and standalone targets visible in 'make' list/completion.
 .PHONY: help down_all \
-        nessie minio spark all \
-        start_nessie start_minio start_spark start_all \
-        stop_nessie stop_minio stop_spark stop_all
+        nessie minio spark trino all \
+        start_nessie start_minio start_spark start_trino start_all \
+        stop_nessie stop_minio stop_spark stop_trino stop_all
 
 # --- Generic Command Logic (Internal Targets) ---
 # Macro to check if S variable is set and is a valid service group name
@@ -85,17 +87,17 @@ FORMATTED_SERVICE_DESCRIPTIONS = $(foreach service,$(VALID_SERVICES),\
 
 # Formatted list for 'Start' aliases (nessie, minio, spark, all)
 FORMATTED_START_ALIASES = $(foreach service,$(VALID_SERVICES),\
-  printf "  %-15s : Start %s service(s) [uses docker compose up -d]\n" $(service) "$(service)";\
+  printf "  %-15s : Start %s service(s)\n" $(service) "$(service)";\
 )
 
 # Formatted list for 'Start existing' aliases (start_nessie, ...)
 FORMATTED_START_EXISTING_ALIASES = $(foreach service,$(VALID_SERVICES),\
-  printf "  %-15s : Start existing %s service(s) [uses docker compose start]\n" start_$(service) "$(service)";\
+  printf "  %-15s : Start existing %s service(s)\n" start_$(service) "$(service)";\
 )
 
 # Formatted list for 'Stop' aliases (stop_nessie, ...)
 FORMATTED_STOP_ALIASES = $(foreach service,$(VALID_SERVICES),\
-  printf "  %-15s : Stop %s service(s) [uses docker compose stop]\n" stop_$(service) "$(service)";\
+  printf "  %-15s : Stop %s service(s)\n" stop_$(service) "$(service)";\
 )
 
 
@@ -109,13 +111,17 @@ help:
 	@echo ""
 
 	@echo "Aliases:" # <-- Added Aliases header back
+	@echo "[uses 'docker compose up -d']"
 	@$(FORMATTED_START_ALIASES) # <-- Prints Start aliases
 	@echo "" # Separator
+	@echo "[uses 'docker compose start']"
 	@$(FORMATTED_START_EXISTING_ALIASES) # <-- Prints Start existing aliases
 	@echo "" # Separator
+	@echo "[uses 'docker compose stop']"
 	@$(FORMATTED_STOP_ALIASES) # <-- Prints Stop aliases
 	@echo "" # Separator
 	@printf "  %-15s : %s\n" "down_all" "Stop and remove ALL project resources [full cleanup]";
+	@printf "  %-15s : %s\n" "run_trino" "Opens Trino command line interface";
 	@printf "  %-15s : Shows this help message\n" "help"; # Add help itself as an alias
 	@echo "" # Separator
 
@@ -159,6 +165,9 @@ minio: S = minio
 spark: _up
 spark: S = spark
 
+trino: _up
+trino: S = trino
+
 all: _up
 all: S = all
 
@@ -171,6 +180,9 @@ start_minio: S = minio
 
 start_spark: _start
 start_spark: S = spark
+
+start_trino: _start
+start_trino: S = trino
 
 start_all: _start
 start_all: S = all
@@ -185,6 +197,9 @@ stop_minio: S = minio
 stop_spark: _stop
 stop_spark: S = spark
 
+stop_trino: _stop
+stop_trino: S = trino
+
 stop_all: _stop
 stop_all: S = all
 
@@ -192,3 +207,6 @@ stop_all: S = all
 down_all:
 	@echo "Stopping and removing ALL services defined in docker-compose.yml..."
 	$(DC) down
+
+run_trino:
+	docker exec -it trino /bin/trino

@@ -6,9 +6,9 @@ services:
     image: postgres:14
     container_name: postgres
     environment:
-      POSTGRES_DB:   nessie
-      POSTGRES_USER: nessie
-      POSTGRES_PASSWORD: nessie
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_ADMIN}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -34,9 +34,9 @@ services:
       - QUARKUS_PROFILE=prod
       - QUARKUS_HTTP_PORT=19120
       - NESSIE_VERSION_STORE_TYPE=JDBC
-      - QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://postgres:5432/nessie
-      - QUARKUS_DATASOURCE_USERNAME=nessie
-      - QUARKUS_DATASOURCE_PASSWORD=nessie
+      - QUARKUS_DATASOURCE_JDBC_URL=${DB_URI}
+      - QUARKUS_DATASOURCE_USERNAME=${DB_ADMIN}
+      - QUARKUS_DATASOURCE_PASSWORD=${DB_PASSWORD}
       - QUARKUS_LOG_LEVEL=INFO
     networks:
       - lakehouse-network
@@ -75,23 +75,24 @@ services:
     platform: linux/x86_64
     image: alexmerced/spark35nb@sha256:a097787b7cda538b668e320d660c24bec7e6a9691a8b0b971b26c96c6661091f
     container_name: spark
+    mem_limit: 8g
     depends_on:
       - minio
       - nessie
     env_file:
       - .env
     ports: 
-      - 8080:8080    # Master Web UI
+      - 8081:8081    # Master Web UI
       - 7077:7077    # Master Port for job submissions
-      - 8081:8081    # Worker Web UI
+      - 8082:8082    # Worker Web UI
       - 4040-4045:4040-4045  # Additional Spark job UI ports for more jobs
       - 18080:18080  # Spark History Server
       - 8888:8888    # Jupyter Notebook
     environment:
       - SPARK_MASTER_HOST=spark
       - SPARK_MASTER_PORT=7077
-      - SPARK_MASTER_WEBUI_PORT=8080
-      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_MASTER_WEBUI_PORT=8081
+      - SPARK_WORKER_WEBUI_PORT=8082
       - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=/tmp/spark-events
       - SPARK_HOME=/opt/spark
     volumes:
@@ -114,6 +115,23 @@ services:
           --NotebookApp.token='' \
           --NotebookApp.password='' && \
         tail -f /dev/null
+    networks:
+      - lakehouse-network
+    
+  trino:
+    image: "trinodb/trino:475"
+    container_name: trino
+    mem_limit: 8g
+    depends_on:
+      - minio
+      - nessie
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./trino/etc:/usr/lib/trino/etc
+      - ./trino/catalog:/etc/trino/catalog
     networks:
       - lakehouse-network
 
