@@ -14,14 +14,14 @@ conf = (
         .setAppName('spark_iceberg')
         .set(
         'spark.jars.packages',
-        'org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.4.2,'
+        'org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.1,'
         'org.projectnessie.nessie-integrations:nessie-spark-extensions-3.5_2.12:0.83.1,'
-        'software.amazon.awssdk:bundle:2.17.178,'
-        'software.amazon.awssdk:url-connection-client:2.17.178,'
+        'software.amazon.awssdk:bundle:2.29.52,'
         'org.slf4j:slf4j-simple:2.0.7,'
         'org.apache.hadoop:hadoop-aws:3.3.4,'
         'com.amazonaws:aws-java-sdk-bundle:1.12.365'
         )
+        .set("spark.jars.excludes", "org.slf4j:slf4j-log4j12")
         .set(
             'spark.sql.extensions',
             'org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,'
