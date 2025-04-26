@@ -16,4 +16,12 @@ spark/*
 !spark/iceberg_setup.py
 !spark/iceberg_DDL.ipynb
 
+airflow/logs/*
+airflow/config/*
+airflow/dags/*
+airflow/plugins/*
 
+!airflow/logs/.gitkeep
+!airflow/config/.gitkeep
+!airflow/dags/.gitkeep
+!airflow/plugins/.gitkeep
