@@ -2,7 +2,6 @@
 FROM node:18
 
 ARG PROXY_HOST=unity
-# ARG PROXY_HOST=127.0.0.1
 WORKDIR /ui
 
 COPY package.json yarn.lock ./
@@ -13,13 +12,12 @@ RUN <<EOF
 set -ex
 apt-get update
 apt-get install -y jq
-jq --arg proxy "http://$PROXY_HOST:8085" '.proxy = $proxy' package.json > temp.json
+jq --arg proxy "http://$PROXY_HOST:8080" '.proxy = $proxy' package.json > temp.json
 mv temp.json package.json
 yarn install
 apt-get clean
 EOF
 
 COPY --exclude=package.json --exclude=yarn.lock . ./
-# COPY --exclude=yarn.lock . ./
 
 CMD ["yarn", "start"]

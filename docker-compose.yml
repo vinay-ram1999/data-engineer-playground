@@ -86,10 +86,10 @@ services:
       context: ./unity/ui/
       dockerfile: Dockerfile
     container_name: unity-ui
-    ports:
-      - "3000:3000"
     depends_on:
       - unity
+    ports:
+      - "3000:3000"
     networks:
       - lakehouse-network
   
