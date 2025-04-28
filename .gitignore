@@ -4,8 +4,8 @@
 */.ipynb_checkpoints/*
 */__pycache__/*
 
-data/*
-!data/flights-1m.parquet
+minio/*
+!minio/.gitkeep
 
 *.csv
 
