@@ -52,11 +52,11 @@ services:
   nessie:
     image: ghcr.io/projectnessie/nessie:0.83.1
     container_name: nessie
+    ports:
+      - "19120:19120"
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "19120:19120"
     environment:
       - QUARKUS_PROFILE=prod
       - QUARKUS_HTTP_PORT=19120
@@ -68,17 +68,42 @@ services:
     networks:
       - lakehouse-network
   
-  # Unity catalog
+  # Unity Catalog
   unity:
     image: unitycatalog/unitycatalog:v0.2.1
     container_name: unity
+    env_file:
+      - .env
     ports:
       - "8085:8080"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     volumes:
       - ./unity/conf:/opt/unitycatalog/etc/conf
-      - ./unity/data:/opt/unitycatalog/etc/data
+      - udata:/opt/unitycatalog/etc/data
     networks:
       - lakehouse-network
+  
+  # unity-setup:
+  #   image: unitycatalog/unitycatalog:v0.2.1
+  #   container_name: unity-setup
+  #   depends_on:
+  #     unity:
+  #       condition: service_healthy
+  #   networks:
+  #     - lakehouse-network
+  #   command: >
+  #     /bin/bash -c "
+  #     sleep 5;
+  #     echo 'Running Unity Catalog setup...';
+  #     bin/uc catalog create --name iceberg || true;
+  #     bin/uc catalog create --name delta || true;
+  #     echo 'Catalog creation complete.';
+  #     "
+  #   restart: "on-failure"
   
   # Unity UI
   unity-ui:
@@ -87,7 +112,10 @@ services:
       dockerfile: Dockerfile
     container_name: unity-ui
     depends_on:
-      - unity
+      unity:
+        condition: service_healthy
+      unity-setup:
+        condition: service_completed_successfully
     ports:
       - "3000:3000"
     networks:
@@ -176,7 +204,6 @@ services:
     
   trino:
     image: "trinodb/trino:475"
-    # build: .
     container_name: trino
     mem_limit: 8g
     depends_on:
@@ -345,4 +372,4 @@ networks:
 
 volumes:
   pgdata:
-  lsdata:
+  udata:
