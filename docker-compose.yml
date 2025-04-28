@@ -68,6 +68,31 @@ services:
     networks:
       - lakehouse-network
   
+  # Unity catalog
+  unity:
+    image: unitycatalog/unitycatalog:v0.2.1
+    container_name: unity
+    ports:
+      - "8085:8080"
+    volumes:
+      - ./unity/conf:/opt/unitycatalog/etc/conf
+      - ./unity/data:/opt/unitycatalog/etc/data
+    networks:
+      - lakehouse-network
+  
+  # Unity UI
+  unity-ui:
+    build:
+      context: ./unity/ui/
+      dockerfile: Dockerfile
+    container_name: unity-ui
+    ports:
+      - "3000:3000"
+    depends_on:
+      - unity
+    networks:
+      - lakehouse-network
+  
   # Minio Storage Server
   minio:
     image: minio/minio@sha256:8834ae47a2de3509b83e0e70da9369c24bbbc22de42f2a2eddc530eee88acd1b
@@ -84,15 +109,18 @@ services:
       timeout: 20s
       retries: 3
     volumes:
-      - ./data:/data
+      - ./data:/seed
+      - ./minio:/data
     entrypoint: >
       /bin/sh -c "
       minio server /data --console-address ':9001' &
       sleep 5;
       mc alias set myminio http://localhost:9000 ${MINIO_USER_USERNAME} ${MINIO_USER_PASSWORD};
-      mc mb myminio/lakehouse;
+      mc admin accesskey create myminio/ --access-key ${AWS_ACCESS_KEY_ID} --secret-key ${AWS_SECRET_ACCESS_KEY} --description 'Access key for docker environment';
       mc mb myminio/seed;
-      mc cp /data/* myminio/seed/;
+      mc cp /seed/* myminio/seed/;
+      mc mb myminio/${ICEBERG_BUCKET};
+      mc mb myminio/${DELTA_LAKE_BUCKET};
       tail -f /dev/null"
     networks:
       - lakehouse-network
@@ -122,6 +150,7 @@ services:
       - SPARK_WORKER_WEBUI_PORT=8082
       - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=/tmp/spark-events
       - SPARK_HOME=/opt/spark
+      - PYTHONPATH=/workspace/seed
     volumes:
       - ./spark:/workspace/seed
       # - ./requirements.txt:/workspace/seed/requirements.txt
@@ -156,7 +185,7 @@ services:
     env_file:
       - .env
     ports:
-      - "8443:8443"
+      - "8080:8080"
     volumes:
       # - ./trino/etc:/usr/lib/trino/etc
       - ./trino/etc:/etc/trino
@@ -173,7 +202,7 @@ services:
     container_name: airflow-apiserver
     command: api-server
     ports:
-      - "8080:8080"
+      - "8088:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
       interval: 30s
@@ -316,3 +345,4 @@ networks:
 
 volumes:
   pgdata:
+  lsdata:
