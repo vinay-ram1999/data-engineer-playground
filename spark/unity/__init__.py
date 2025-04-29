@@ -1,8 +1,9 @@
 from pyspark import SparkConf
 import os
 
-NESSIE_URI = os.environ["NESSIE_URI"]
-DELTA_LAKE_ENDPOINT = os.environ["DELTA_LAKE_ENDPOINT"]
+ICEBERG_REST_URI = os.environ["ICEBERG_REST_URI"]
+UNITY_URI = os.environ["UNITY_URI"]
+ICEBERG_ENDPOINT = os.environ["ICEBERG_ENDPOINT"]
 AWS_ACCESS_KEY_ID = os.environ["AWS_ACCESS_KEY_ID"]
 AWS_SECRET_ACCESS_KEY = os.environ["AWS_SECRET_ACCESS_KEY"]
 AWS_S3_ENDPOINT = os.environ["AWS_S3_ENDPOINT"]
@@ -10,11 +11,11 @@ AWS_REGION = os.environ["AWS_REGION"]
 
 conf = (
     SparkConf()
-        .setAppName('spark_delta_lake')
+        .setAppName('spark_unity_catalog_delta_lake')
         .set(
         'spark.jars.packages',
         'io.delta:delta-spark_2.12:3.3.1,'
-        'org.projectnessie.nessie-integrations:nessie-spark-extensions-3.5_2.12:0.83.1,'
+        'org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0,'
         'software.amazon.awssdk:bundle:2.29.52,'
         'org.slf4j:slf4j-simple:2.0.7,'
         'org.apache.hadoop:hadoop-aws:3.3.4,'
@@ -24,16 +25,20 @@ conf = (
         .set(
             'spark.sql.extensions',
             'io.delta.sql.DeltaSparkSessionExtension,'
-            'org.projectnessie.spark.extensions.NessieSparkSessionExtensions'
+            'org.apache.iceberg.spark.extensions.IcebergSparkSessionExtension'
         )
 
-        .set('spark.sql.catalog.nessie', 'org.apache.spark.sql.delta.catalog.DeltaCatalog')
-        .set('spark.sql.catalog.nessie.uri', NESSIE_URI)
-        .set('spark.sql.catalog.nessie.ref', 'main')
-        .set('spark.sql.catalog.nessie.authentication.type', 'NONE')
-        .set('spark.sql.catalog.nessie.catalog-impl', 'org.projectnessie.deltalake.NessieDeltaLakeCatalog')
+        .set('spark.sql.catalog', 'org.apache.iceberg.spark.SparkSessionCatalog')
+        .set('spark.sql.catalog.catalog-impl', 'org.apache.iceberg.rest.RESTCatalog')
+        .set("spark.sql.catalog.type", "rest") 
+        .set('spark.sql.catalog.uri', ICEBERG_REST_URI)
+        .set('spark.sql.catalog.warehouse', ICEBERG_ENDPOINT)
 
-        .set('spark.sql.catalog.nessie.warehouse', DELTA_LAKE_ENDPOINT)
+        .set('spark.sql.catalog.s3.endpoint', AWS_S3_ENDPOINT)
+        .set('spark.sql.catalog.s3.access-key-id', AWS_ACCESS_KEY_ID)
+        .set('spark.sql.catalog.s3.secret-access-key', AWS_SECRET_ACCESS_KEY)
+        .set('spark.sql.catalog.s3.path-style-access', 'true')
+        .set('spark.sql.catalog.s3.region', AWS_REGION)
 
         .set('spark.hadoop.fs.s3a.endpoint', AWS_S3_ENDPOINT)
         .set('spark.hadoop.fs.s3a.path.style.access', 'true')

@@ -2,7 +2,7 @@ from pyspark import SparkConf
 import os
 
 NESSIE_URI = os.environ["NESSIE_URI"]
-ICEBERG_ENDPOINT = os.environ["ICEBERG_ENDPOINT"]
+NESSIE_ENDPOINT = os.environ["NESSIE_ENDPOINT"]
 AWS_ACCESS_KEY_ID = os.environ["AWS_ACCESS_KEY_ID"]
 AWS_SECRET_ACCESS_KEY = os.environ["AWS_SECRET_ACCESS_KEY"]
 AWS_S3_ENDPOINT = os.environ["AWS_S3_ENDPOINT"]
@@ -28,20 +28,20 @@ conf = (
         )
         # .set("iceberg.expire.tables.gc.enabled", "true")
 
-        .set('spark.sql.catalog.nessie', 'org.apache.iceberg.spark.SparkCatalog')
-        .set('spark.sql.catalog.nessie.uri', NESSIE_URI)
-        .set('spark.sql.catalog.nessie.ref', 'main')
-        .set('spark.sql.catalog.nessie.authentication.type', 'NONE')
-        .set('spark.sql.catalog.nessie.catalog-impl', 'org.apache.iceberg.nessie.NessieCatalog')
+        .set('spark.sql.catalog', 'org.apache.iceberg.spark.SparkSessionCatalog')
+        .set('spark.sql.catalog.uri', NESSIE_URI)
+        .set('spark.sql.catalog.ref', 'main')
+        .set('spark.sql.catalog.authentication.type', 'NONE')
+        .set('spark.sql.catalog.catalog-impl', 'org.apache.iceberg.nessie.NessieCatalog')
 
-        .set('spark.sql.catalog.nessie.s3.endpoint', AWS_S3_ENDPOINT)
-        .set('spark.sql.catalog.nessie.s3.path-style-access','true')
-        .set('spark.sql.catalog.nessie.s3.access-key', AWS_ACCESS_KEY_ID)
-        .set('spark.sql.catalog.nessie.s3.secret-key', AWS_SECRET_ACCESS_KEY)
-        .set('spark.sql.catalog.nessie.s3.region', AWS_REGION)
+        .set('spark.sql.catalog.s3.endpoint', AWS_S3_ENDPOINT)
+        .set('spark.sql.catalog.s3.path-style-access','true')
+        .set('spark.sql.catalog.s3.access-key', AWS_ACCESS_KEY_ID)
+        .set('spark.sql.catalog.s3.secret-key', AWS_SECRET_ACCESS_KEY)
+        .set('spark.sql.catalog.s3.region', AWS_REGION)
 
-        .set('spark.sql.catalog.nessie.warehouse', ICEBERG_ENDPOINT)
-        .set('spark.sql.catalog.nessie.io-impl', 'org.apache.iceberg.aws.s3.S3FileIO')
+        .set('spark.sql.catalog.warehouse', NESSIE_ENDPOINT)
+        .set('spark.sql.catalog.io-impl', 'org.apache.iceberg.aws.s3.S3FileIO')
 
         .set('spark.hadoop.fs.s3a.endpoint', AWS_S3_ENDPOINT)
         .set('spark.hadoop.fs.s3a.path.style.access', 'true')

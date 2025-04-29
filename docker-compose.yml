@@ -27,6 +27,39 @@ x-airflow-common:
     - lakehouse-network
 
 services:
+  # Minio Storage Server
+  minio:
+    image: minio/minio@sha256:8834ae47a2de3509b83e0e70da9369c24bbbc22de42f2a2eddc530eee88acd1b
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=${MINIO_USER_USERNAME}
+      - MINIO_ROOT_PASSWORD=${MINIO_USER_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - ./data:/seed
+      - ./minio:/data
+    entrypoint: >
+      /bin/sh -c "
+      minio server /data --console-address ':9001' &
+      sleep 5;
+      mc alias set myminio http://localhost:9000 ${MINIO_USER_USERNAME} ${MINIO_USER_PASSWORD};
+      mc admin accesskey create myminio/ --access-key ${AWS_ACCESS_KEY_ID} --secret-key ${AWS_SECRET_ACCESS_KEY} --description 'Access key for docker environment';
+      mc mb myminio/seed;
+      mc cp /seed/* myminio/seed/;
+      mc mb myminio/${NESSIE_BUCKET};
+      mc mb myminio/${ICEBERG_BUCKET};
+      mc mb myminio/${DELTA_LAKE_BUCKET};
+      tail -f /dev/null"
+    networks:
+      - lakehouse-network
+  
   # Postgres DB for nessie backend
   postgres:
     image: postgres:14
@@ -68,12 +101,43 @@ services:
     networks:
       - lakehouse-network
   
+  # IcebergREST Catalog
+  iceberg-rest:
+    image: tabulario/iceberg-rest:1.6.0
+    container_name: iceberg-rest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - 8181:8181
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      CATALOG_WAREHOUSE: ${ICEBERG_BUCKET}
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_JDBC_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
+      CATALOG_JDBC_S3_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      CATALOG_JDBC_S3_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      CATALOG_JDBC_S3_PATH_STYLE_ACCESS: true
+      CATALOG_JDBC_S3_REGION: ${AWS_REGION}
+      # CATALOG_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
+      # CATALOG_S3_PATH_STYLE_ACCESS: true
+      # CATALOG_S3_PATH_STYLE_ACCESS: true
+      CATALOG_URI: ${DB_JDBC_URI}
+      CATALOG_JDBC_USER: ${DB_USERNAME}
+      CATALOG_JDBC_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - lakehouse-network
+  
   # Unity Catalog
   unity:
-    image: unitycatalog/unitycatalog:v0.2.1
+    image: unitycatalog/unitycatalog@sha256:84315469151f77b4af38374aa877f7a927a1ea75819f61adab1bf194cd9c704d
     container_name: unity
     env_file:
       - .env
+    depends_on:
+      - iceberg-rest
     ports:
       - "8085:8080"
     healthcheck:
@@ -82,28 +146,32 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - ./unity/conf:/opt/unitycatalog/etc/conf
-      - udata:/opt/unitycatalog/etc/data
+      - type: bind
+        source: ./unity/conf
+        target: /opt/unitycatalog/etc/conf
+      - type: volume
+        source: udata
+        target: /opt/unitycatalog/etc/data
     networks:
       - lakehouse-network
   
-  # unity-setup:
-  #   image: unitycatalog/unitycatalog:v0.2.1
-  #   container_name: unity-setup
-  #   depends_on:
-  #     unity:
-  #       condition: service_healthy
-  #   networks:
-  #     - lakehouse-network
-  #   command: >
-  #     /bin/bash -c "
-  #     sleep 5;
-  #     echo 'Running Unity Catalog setup...';
-  #     bin/uc catalog create --name iceberg || true;
-  #     bin/uc catalog create --name delta || true;
-  #     echo 'Catalog creation complete.';
-  #     "
-  #   restart: "on-failure"
+  unity-setup:
+    image: unitycatalog/unitycatalog@sha256:84315469151f77b4af38374aa877f7a927a1ea75819f61adab1bf194cd9c704d
+    container_name: unity-setup
+    depends_on:
+      unity:
+        condition: service_healthy
+    command: >
+      /bin/bash -c "
+      sleep 5;
+      echo 'Running Unity Catalog setup...';
+      bin/uc catalog create --name ${ICEBERG_BUCKET} --server http://unity:8080 || true;
+      bin/uc catalog create --name ${DELTA_LAKE_BUCKET} --server http://unity:8080 || true;
+      echo 'Catalog creation complete.';
+      "
+    # restart: "on-failure"
+    networks:
+      - lakehouse-network
   
   # Unity UI
   unity-ui:
@@ -121,38 +189,6 @@ services:
     networks:
       - lakehouse-network
   
-  # Minio Storage Server
-  minio:
-    image: minio/minio@sha256:8834ae47a2de3509b83e0e70da9369c24bbbc22de42f2a2eddc530eee88acd1b
-    container_name: minio
-    environment:
-      - MINIO_ROOT_USER=${MINIO_USER_USERNAME}
-      - MINIO_ROOT_PASSWORD=${MINIO_USER_PASSWORD}
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    volumes:
-      - ./data:/seed
-      - ./minio:/data
-    entrypoint: >
-      /bin/sh -c "
-      minio server /data --console-address ':9001' &
-      sleep 5;
-      mc alias set myminio http://localhost:9000 ${MINIO_USER_USERNAME} ${MINIO_USER_PASSWORD};
-      mc admin accesskey create myminio/ --access-key ${AWS_ACCESS_KEY_ID} --secret-key ${AWS_SECRET_ACCESS_KEY} --description 'Access key for docker environment';
-      mc mb myminio/seed;
-      mc cp /seed/* myminio/seed/;
-      mc mb myminio/${ICEBERG_BUCKET};
-      mc mb myminio/${DELTA_LAKE_BUCKET};
-      tail -f /dev/null"
-    networks:
-      - lakehouse-network
-  
   # Spark
   spark:
     platform: linux/x86_64
@@ -162,6 +198,7 @@ services:
     depends_on:
       - minio
       - nessie
+      - unity-ui
     env_file:
       - .env
     ports: 
@@ -209,6 +246,7 @@ services:
     depends_on:
       - minio
       - nessie
+      - unity-ui
     env_file:
       - .env
     ports:

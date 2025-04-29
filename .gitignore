@@ -12,13 +12,13 @@ minio/*
 
 .env
 
-spark/iceberg/*
-!spark/iceberg/__init__.py
-!spark/iceberg/DDL.ipynb
+spark/nessie/*
+!spark/nessie/__init__.py
+!spark/nessie/DDL.ipynb
 
-spark/deltalake/*
-!spark/deltalake/__init__.py
-!spark/deltalake/DDL.ipynb
+spark/unity/*
+!spark/unity/__init__.py
+!spark/unity/iceberg_DDL.ipynb
 
 airflow/logs/*
 airflow/config/*
