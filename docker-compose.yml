@@ -79,6 +79,30 @@ services:
       retries: 10
     networks:
       - lakehouse-network
+    
+  # PG Admin
+  pgadmin:
+    image: dpage/pgadmin4:9.3
+    container_name: pgadmin
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "80"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: secret123
+    volumes:
+      - pgadata:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    networks:
+      - lakehouse-network
 
   # Nessie Catalog Server Using Postgres DB
   nessie:
@@ -100,26 +124,27 @@ services:
     networks:
       - lakehouse-network
   
-  # Unity Catalog
-  unity:
-    image: unitycatalog/unitycatalog:v0.2.1
-    container_name: unity
+  # Unity Catalog with Postgres DB as backend
+  unitycatalog:
+    image: unitycatalog/unitycatalog:latest
+    container_name: unitycatalog
     env_file:
       - .env
     ports:
       - "8085:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "8080"]
       interval: 10s
       timeout: 5s
       retries: 10
     volumes:
-      - type: bind
-        source: ./unity/conf
-        target: /home/unitycatalog/etc/conf
-      - type: volume
-        source: udata
-        target: /home/unitycatalog/etc/data
+      - ./unity/conf:/home/unitycatalog/etc/conf
+      - ./unity/jars:/home/unitycatalog/
+      - udata:/home/unitycatalog/etc/data
+      - udb:/home/unitycatalog/etc/db
     networks:
       - lakehouse-network
   
@@ -148,7 +173,7 @@ services:
       dockerfile: Dockerfile
     container_name: unity-ui
     depends_on:
-      unity:
+      unitycatalog:
         condition: service_healthy
       # unity-setup:
       #   condition: service_completed_successfully
@@ -368,4 +393,6 @@ networks:
 
 volumes:
   pgdata:
+  pgadata:
   udata:
+  udb:

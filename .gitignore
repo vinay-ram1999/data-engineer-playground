@@ -10,6 +10,7 @@ minio/*
 
 *.csv
 *.jar
+!unity/jars/postgresql-42.7.5.jar
 *.pyc
 
 .env
