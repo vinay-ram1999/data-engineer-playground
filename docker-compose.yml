@@ -54,8 +54,7 @@ services:
       mc mb myminio/seed;
       mc cp /seed/* myminio/seed/;
       mc mb myminio/${NESSIE_BUCKET};
-      mc mb myminio/${ICEBERG_BUCKET};
-      mc mb myminio/${DELTA_LAKE_BUCKET};
+      mc mb myminio/${UNITY_BUCKET};
       tail -f /dev/null"
     networks:
       - lakehouse-network
@@ -101,43 +100,12 @@ services:
     networks:
       - lakehouse-network
   
-  # IcebergREST Catalog
-  iceberg-rest:
-    image: tabulario/iceberg-rest:1.6.0
-    container_name: iceberg-rest
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - 8181:8181
-    environment:
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_REGION: ${AWS_REGION}
-      CATALOG_WAREHOUSE: ${ICEBERG_BUCKET}
-      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
-      CATALOG_JDBC_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
-      CATALOG_JDBC_S3_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      CATALOG_JDBC_S3_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      CATALOG_JDBC_S3_PATH_STYLE_ACCESS: true
-      CATALOG_JDBC_S3_REGION: ${AWS_REGION}
-      # CATALOG_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
-      # CATALOG_S3_PATH_STYLE_ACCESS: true
-      # CATALOG_S3_PATH_STYLE_ACCESS: true
-      CATALOG_URI: ${DB_JDBC_URI}
-      CATALOG_JDBC_USER: ${DB_USERNAME}
-      CATALOG_JDBC_PASSWORD: ${DB_PASSWORD}
-    networks:
-      - lakehouse-network
-  
   # Unity Catalog
   unity:
-    image: unitycatalog/unitycatalog@sha256:84315469151f77b4af38374aa877f7a927a1ea75819f61adab1bf194cd9c704d
+    image: unitycatalog/unitycatalog:v0.2.1
     container_name: unity
     env_file:
       - .env
-    depends_on:
-      - iceberg-rest
     ports:
       - "8085:8080"
     healthcheck:
@@ -148,30 +116,30 @@ services:
     volumes:
       - type: bind
         source: ./unity/conf
-        target: /opt/unitycatalog/etc/conf
+        target: /home/unitycatalog/etc/conf
       - type: volume
         source: udata
-        target: /opt/unitycatalog/etc/data
+        target: /home/unitycatalog/etc/data
     networks:
       - lakehouse-network
   
-  unity-setup:
-    image: unitycatalog/unitycatalog@sha256:84315469151f77b4af38374aa877f7a927a1ea75819f61adab1bf194cd9c704d
-    container_name: unity-setup
-    depends_on:
-      unity:
-        condition: service_healthy
-    command: >
-      /bin/bash -c "
-      sleep 5;
-      echo 'Running Unity Catalog setup...';
-      bin/uc catalog create --name ${ICEBERG_BUCKET} --server http://unity:8080 || true;
-      bin/uc catalog create --name ${DELTA_LAKE_BUCKET} --server http://unity:8080 || true;
-      echo 'Catalog creation complete.';
-      "
-    # restart: "on-failure"
-    networks:
-      - lakehouse-network
+  # unity-setup:
+  #   image: unitycatalog/unitycatalog@sha256:84315469151f77b4af38374aa877f7a927a1ea75819f61adab1bf194cd9c704d
+  #   container_name: unity-setup
+  #   depends_on:
+  #     unity:
+  #       condition: service_healthy
+  #   command: >
+  #     /bin/bash -c "
+  #     sleep 5;
+  #     echo 'Running Unity Catalog setup...';
+  #     bin/uc catalog create --name ${ICEBERG_BUCKET} --server http://unity:8080 || true;
+  #     bin/uc catalog create --name ${DELTA_LAKE_BUCKET} --server http://unity:8080 || true;
+  #     echo 'Catalog creation complete.';
+  #     "
+  #   # restart: "on-failure"
+  #   networks:
+  #     - lakehouse-network
   
   # Unity UI
   unity-ui:
@@ -182,17 +150,19 @@ services:
     depends_on:
       unity:
         condition: service_healthy
-      unity-setup:
-        condition: service_completed_successfully
+      # unity-setup:
+      #   condition: service_completed_successfully
     ports:
       - "3000:3000"
     networks:
       - lakehouse-network
   
-  # Spark
+  # Spark 3.5.5 engine with jupyter notebook
   spark:
-    platform: linux/x86_64
-    image: alexmerced/spark35nb@sha256:a097787b7cda538b668e320d660c24bec7e6a9691a8b0b971b26c96c6661091f
+    build:
+      context: ./spark/
+      dockerfile: Dockerfile
+    image: spark-jupyter:3.5.5
     container_name: spark
     mem_limit: 8g
     depends_on:
@@ -201,44 +171,32 @@ services:
       - unity-ui
     env_file:
       - .env
-    ports: 
-      - 8081:8081    # Master Web UI
-      - 7077:7077    # Master Port for job submissions
-      - 8082:8082    # Worker Web UI
-      - 4040-4045:4040-4045  # Additional Spark job UI ports for more jobs
-      - 18080:18080  # Spark History Server
-      - 8888:8888    # Jupyter Notebook
+    ports:
+      - 8082:8080             # Master Web UI (exposed to 8082 instead of 8080)
+      - 7077:7077             # Master Port for job submissions
+      - 18080:18080           # Spark History Server
+      - 8888:8888             # Jupyter Notebook
     environment:
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - SPARK_MASTER_HOST=spark
-      - SPARK_MASTER_PORT=7077
-      - SPARK_MASTER_WEBUI_PORT=8081
-      - SPARK_WORKER_WEBUI_PORT=8082
       - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=/tmp/spark-events
-      - SPARK_HOME=/opt/spark
-      - PYTHONPATH=/workspace/seed
+      - PYTHONPATH=/opt/bitnami/workspace/seed
     volumes:
-      - ./spark:/workspace/seed
-      # - ./requirements.txt:/workspace/seed/requirements.txt
-    entrypoint:
-      - /bin/bash
-      - -c
-      # - python3 -m pip install -r /workspace/seed/requirements.txt
-      - |
-        /opt/spark/sbin/start-master.sh && \
-        /opt/spark/sbin/start-worker.sh spark://localhost:7077 && \
-        mkdir -p /tmp/spark-events && \
-        start-history-server.sh && \
-        jupyter lab \
-          --ip=0.0.0.0 \
-          --port=8888 \
-          --no-browser \
-          --allow-root \
-          --NotebookApp.token='' \
-          --NotebookApp.password='' && \
-        tail -f /dev/null
+      - ./spark/seed:/opt/bitnami/workspace/seed
+    entrypoint: >
+      /bin/bash -c "
+      /opt/bitnami/spark/sbin/start-master.sh && \
+      mkdir -p /tmp/spark-events && \
+      /opt/bitnami/spark/sbin/start-history-server.sh && \
+      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password='' && \
+      tail -f /dev/null
+      "
     networks:
       - lakehouse-network
-    
+  
+  # Trino engine
   trino:
     image: "trinodb/trino:475"
     container_name: trino

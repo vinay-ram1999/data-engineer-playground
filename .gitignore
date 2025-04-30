@@ -9,16 +9,18 @@ minio/*
 !minio/.gitkeep
 
 *.csv
+*.jar
+*.pyc
 
 .env
 
-spark/nessie/*
-!spark/nessie/__init__.py
-!spark/nessie/DDL.ipynb
+spark/seed/nessie/*
+!spark/seed/nessie/__init__.py
+!spark/seed/nessie/iceberg_DDL.ipynb
 
-spark/unity/*
-!spark/unity/__init__.py
-!spark/unity/iceberg_DDL.ipynb
+spark/seed/unity/*
+!spark/seed/unity/__init__.py
+!spark/seed/unity/delta_DDL.ipynb
 
 airflow/logs/*
 airflow/config/*
