@@ -2,6 +2,7 @@ from pyspark import SparkConf
 import os
 
 UNITY_URI = os.environ["UNITY_URI"]
+UNITY_SERVER = os.environ["UNITY_SERVER"]
 AWS_ACCESS_KEY_ID = os.environ["AWS_ACCESS_KEY_ID"]
 AWS_SECRET_ACCESS_KEY = os.environ["AWS_SECRET_ACCESS_KEY"]
 AWS_S3_ENDPOINT = os.environ["AWS_S3_ENDPOINT"]
@@ -29,7 +30,7 @@ conf = (
 
         .set('spark.sql.catalog.spark_catalog', 'io.unitycatalog.spark.UCSingleCatalog')
         .set('spark.sql.catalog.unity', 'io.unitycatalog.spark.UCSingleCatalog')
-        .set('spark.sql.catalog.unity.uri', UNITY_URI)
+        .set('spark.sql.catalog.unity.uri', UNITY_SERVER)
         .set('spark.sql.defaultCatalog', 'unity')
         .set('spark.sql.catalog.unity.token', '') 
         # .set('spark.sql.catalog.unity.catalog-impl', 'org.apache.iceberg.rest.RESTCatalog')

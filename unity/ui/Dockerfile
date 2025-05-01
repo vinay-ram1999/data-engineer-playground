@@ -2,6 +2,8 @@
 FROM node:18
 
 ARG PROXY_HOST=unity
+RUN echo "unity catalog hostname is set to: $PROXY_HOST"
+
 WORKDIR /ui
 
 COPY package.json yarn.lock ./

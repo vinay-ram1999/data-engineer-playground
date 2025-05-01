@@ -94,7 +94,7 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 45s
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: secret123
@@ -104,7 +104,7 @@ services:
     networks:
       - lakehouse-network
 
-  # Nessie Catalog Server Using Postgres DB
+  # Nessie Catalog with Postgres DB as backend
   nessie:
     image: ghcr.io/projectnessie/nessie:0.83.1
     container_name: nessie
@@ -125,9 +125,9 @@ services:
       - lakehouse-network
   
   # Unity Catalog with Postgres DB as backend
-  unitycatalog:
+  unity:
     image: unitycatalog/unitycatalog:v0.2.1
-    container_name: unitycatalog
+    container_name: unity   # This container name is used in unity-ui image build!
     env_file:
       - .env
     ports:
@@ -141,9 +141,15 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - ./unity/conf:/home/unitycatalog/etc/conf
-      - udata:/home/unitycatalog/etc/data
-      - udb:/home/unitycatalog/etc/db
+      - type: bind
+        source: ./unity/conf
+        target: /home/unitycatalog/etc/conf
+      - type: volume
+        source: udata
+        target: /home/unitycatalog/etc/data
+      - type: volume
+        source: udb
+        target: /home/unitycatalog/etc/db
     networks:
       - lakehouse-network
   
@@ -151,7 +157,7 @@ services:
   #   image: unitycatalog/unitycatalog:v0.2.1
   #   container_name: unity-setup
   #   depends_on:
-  #     unitycatalog:
+  #     unity:
   #       condition: service_healthy
   #   command: >
   #     /bin/bash -c "
@@ -169,9 +175,12 @@ services:
     build:
       context: ./unity/ui/
       dockerfile: Dockerfile
+      # args:
+      #   PROXY_HOST: ${UNITY_HOST}
+    image: unity-ui:0.2.1
     container_name: unity-ui
     depends_on:
-      unitycatalog:
+      unity:
         condition: service_healthy
       # unity-setup:
       #   condition: service_completed_successfully

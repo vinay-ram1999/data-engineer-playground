@@ -1,0 +1,18 @@
+# WIP
+# https://trino.io/docs/current/connector/delta-lake.html
+# https://docs.starburst.io/latest/connector/delta-lake.html
+# https://community.databricks.com/t5/data-governance/get-the-thrift-hive-metastore-uri-for-databricks-unity-catalog/td-p/46278
+connector.name=delta_lake
+# # Must be set to read_only
+delta.security=read_only
+# # hive.metastore=unity
+hive.metastore.uri=thrift://localhost:9083
+# # hive.metastore.warehouse=${ENV:UNITY_BUCKET}
+# # hive.metastore.unity.token=token
+# # hive.metastore.unity.catalog-name=main
+# fs.native-s3.enabled=true
+# s3.path-style-access=true
+# s3.endpoint=${ENV:AWS_S3_ENDPOINT}
+# s3.region=${ENV:MINIO_REGION}
+# s3.aws-access-key=${ENV:AWS_ACCESS_KEY_ID}
+# s3.aws-secret-key=${ENV:AWS_SECRET_ACCESS_KEY}
