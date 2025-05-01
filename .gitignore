@@ -9,9 +9,17 @@ minio/*
 !minio/.gitkeep
 
 *.csv
+
 *.jar
-!unity/jars/postgresql-42.7.5.jar
+
+*.der
 *.pyc
+
+*.txt
+!requirements.txt
+
+*.json
+!pgadmin/servers.json
 
 .env
 

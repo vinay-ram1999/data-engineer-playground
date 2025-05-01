@@ -126,7 +126,7 @@ services:
   
   # Unity Catalog with Postgres DB as backend
   unitycatalog:
-    image: unitycatalog/unitycatalog:latest
+    image: unitycatalog/unitycatalog:v0.2.1
     container_name: unitycatalog
     env_file:
       - .env
@@ -142,27 +142,25 @@ services:
       retries: 10
     volumes:
       - ./unity/conf:/home/unitycatalog/etc/conf
-      - ./unity/jars:/home/unitycatalog/
       - udata:/home/unitycatalog/etc/data
       - udb:/home/unitycatalog/etc/db
     networks:
       - lakehouse-network
   
   # unity-setup:
-  #   image: unitycatalog/unitycatalog@sha256:84315469151f77b4af38374aa877f7a927a1ea75819f61adab1bf194cd9c704d
+  #   image: unitycatalog/unitycatalog:v0.2.1
   #   container_name: unity-setup
   #   depends_on:
-  #     unity:
+  #     unitycatalog:
   #       condition: service_healthy
   #   command: >
   #     /bin/bash -c "
   #     sleep 5;
   #     echo 'Running Unity Catalog setup...';
-  #     bin/uc catalog create --name ${ICEBERG_BUCKET} --server http://unity:8080 || true;
-  #     bin/uc catalog create --name ${DELTA_LAKE_BUCKET} --server http://unity:8080 || true;
+  #     bin/uc catalog create --name ${NESSIE_BUCKET} --server ${UNITY_SERVER} || true;
+  #     bin/uc catalog create --name ${UNITY_BUCKET} --server ${UNITY_SERVER} || true;
   #     echo 'Catalog creation complete.';
   #     "
-  #   # restart: "on-failure"
   #   networks:
   #     - lakehouse-network
   
