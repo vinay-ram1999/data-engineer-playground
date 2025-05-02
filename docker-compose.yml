@@ -176,11 +176,11 @@ services:
   
   # Unity UI
   unity-ui:
-    build:
-      context: ./unity/ui/
-      dockerfile: Dockerfile
-      # args:
-      #   PROXY_HOST: ${UNITY_HOST}
+    # build:
+    #   context: ./unity/ui/
+    #   dockerfile: Dockerfile
+    #   # args:
+    #   #   PROXY_HOST: ${UNITY_HOST}
     image: unity-ui:0.2.1
     container_name: unity-ui
     depends_on:
@@ -195,10 +195,10 @@ services:
   
   # Spark 3.5.5 engine with jupyter notebook
   spark:
-    build:
-      context: ./spark/
-      dockerfile: Dockerfile
-    image: spark-jupyter:3.5.5
+    # build:
+    #   context: ./spark/
+    #   dockerfile: Dockerfile
+    image: vinayramg/spark-nb_v3.5.5:latest
     container_name: spark
     mem_limit: 8g
     depends_on:

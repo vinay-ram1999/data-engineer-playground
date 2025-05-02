@@ -1,4 +1,4 @@
-name: Docker Build
+name: Docker Build and Push Spark Image
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           
-      - name: Build and push Docker image
+      - name: Build and push Spark Notebook Docker image
         uses: docker/build-push-action@v5
         with:
           push: true
@@ -30,14 +30,4 @@ jobs:
           platforms: linux/amd64, linux/arm64, linux/x86_64   # Multi-platform support
           cache-from: type=registry,ref=vinayramg/spark-nb_v3.5.5:cache
           cache-to: type=inline,mode=max
-      
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          push: true
-          context: ./unity/ui/
-          tags: vinayramg/unitycatalog-ui_v0.2.1:latest
-          platforms: linux/amd64, linux/arm64, linux/x86_64   # Multi-platform support
-          cache-from: type=registry,ref=vinayramg/unitycatalog-ui_v0.2.1:cache
-          cache-to: type=inline,mode=max
-      
+          
