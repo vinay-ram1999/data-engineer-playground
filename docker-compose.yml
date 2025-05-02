@@ -181,7 +181,7 @@ services:
     #   dockerfile: Dockerfile
     #   # args:
     #   #   PROXY_HOST: ${UNITY_HOST}
-    image: unity-ui:0.2.1
+    image: vinayramg/unitycatalog-ui_v0.2.1:latest
     container_name: unity-ui
     depends_on:
       unity:
