@@ -124,32 +124,36 @@ services:
     networks:
       - lakehouse-network
   
-  # Unity Catalog with Postgres DB as backend
+  # Unity Catalog
   unity:
+    platform: linux/x86_64
     image: unitycatalog/unitycatalog:v0.2.1
     container_name: unity   # This container name is used in unity-ui image build!
+    user: root
     env_file:
       - .env
     ports:
       - "8085:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "8080"]
       interval: 10s
       timeout: 5s
       retries: 10
     volumes:
-      - type: bind
-        source: ./unity/conf
-        target: /home/unitycatalog/etc/conf
-      - type: volume
-        source: udata
-        target: /home/unitycatalog/etc/data
-      - type: volume
-        source: udb
-        target: /home/unitycatalog/etc/db
+      - ./unity/conf:/home/unitycatalog/etc/conf
+      - udata:/home/unitycatalog/etc/data/external
+      - udb:/home/unitycatalog/etc/db
+    # This workaround is required to use the 'bin/uc read' command to read the contents from default unity delta tables 
+    entrypoint: > 
+      /bin/bash -c "
+      apk add --no-cache ca-certificates wget && \
+      wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
+      wget -q https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.35-r1/glibc-2.35-r1.apk && \
+      wget -q https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.35-r1/glibc-bin-2.35-r1.apk && \
+      apk add --no-cache --allow-untrusted --force-overwrite glibc-2.35-r1.apk glibc-bin-2.35-r1.apk && \
+      rm -f glibc-2.35-r1.apk glibc-bin-2.35-r1.apk && \
+      bin/start-uc-server
+      "
     networks:
       - lakehouse-network
   
@@ -198,16 +202,16 @@ services:
     container_name: spark
     mem_limit: 8g
     depends_on:
-      - minio
       - nessie
       - unity-ui
+      - minio
     env_file:
       - .env
     ports:
-      - 8082:8080             # Master Web UI (exposed to 8082 instead of 8080)
-      - 7077:7077             # Master Port for job submissions
-      - 18080:18080           # Spark History Server
-      - 8888:8888             # Jupyter Notebook
+      - "8082:8080"             # Master Web UI (exposed to 8082 instead of 8080)
+      - "7077:7077"             # Master Port for job submissions
+      - "18080:18080"           # Spark History Server
+      - "8888:8888"             # Jupyter Notebook
     environment:
       - AWS_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
@@ -234,15 +238,14 @@ services:
     container_name: trino
     mem_limit: 8g
     depends_on:
-      - minio
       - nessie
       - unity-ui
+      - minio
     env_file:
       - .env
     ports:
       - "8080:8080"
     volumes:
-      # - ./trino/etc:/usr/lib/trino/etc
       - ./trino/etc:/etc/trino
       # - ./trino/keystore.jks:/usr/lib/trino/keystore.jks
       # - ./trino/catalog:/etc/trino/catalog
@@ -391,8 +394,8 @@ services:
       - bash
       - -c
       - airflow
-    depends_on:
-      <<: *airflow-common-depends-on
+    # depends_on:
+      # <<: *airflow-common-depends-on
 
 networks:
   lakehouse-network:

@@ -32,7 +32,7 @@ conf = (
         .set('spark.sql.catalog.unity', 'io.unitycatalog.spark.UCSingleCatalog')
         .set('spark.sql.catalog.unity.uri', UNITY_SERVER)
         .set('spark.sql.defaultCatalog', 'unity')
-        .set('spark.sql.catalog.unity.token', '') 
+        # .set('spark.sql.catalog.unity.token', '') # this should match the ./unity/conf/token.txt every time the container is restarted
         # .set('spark.sql.catalog.unity.catalog-impl', 'org.apache.iceberg.rest.RESTCatalog')
         # .set('spark.sql.catalog.unity.type', 'rest')
 
