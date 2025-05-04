@@ -8,7 +8,7 @@ This documentation covers the services defined in the `docker-compose.yml` and h
 
 ## Prerequisites
 
-- **Make sure you have installed Docker and Docker Compose** locally.
+- **Make sure you have installed Docker and Git** locally.
 - Basic understanding of how Docker containers works (not mandatory).
 - Clone this repo and copy the environment template:
   ```bash
@@ -36,6 +36,9 @@ docker compose up -d minio
 **Note:**
 - On startup, files in `data/` are seeded into bucket `seed`.
 
+![Alt](images/minio_init.jpg)
+
+
 ## 2. PostgreSQL & pgAdmin
 
 **Overview:**
@@ -52,6 +55,8 @@ docker compose up -d postgres pgadmin
 - The default database schema in postgres is set to `public` so all the tables created by Nessie/Airflow can be found under this database schema.
 - To view this database in pgAdmin the credentials are (user:`pgadmin` | password: `pgadmin`)
 
+![Alt](images/pgadmin_cred.jpg)
+
 ## 3. Nessie Catalog
 
 **Overview:**
@@ -63,6 +68,8 @@ docker compose up -d nessie
 ```
 - Nessie UI: http://localhost:19120
 
+![Alt](images/nessie_ui.png)
+
 ## 4. Unity Catalog OSS (Server & UI)
 
 **Overview:**
@@ -73,7 +80,9 @@ Unity Catalog OSS is an open-source, universal data and AI catalog that provides
 docker compose up -d unity unity-ui
 ```
 - Unity Server API: http://localhost:8085
-- UI: http://localhost:3000
+- Unity UI: http://localhost:3000
+
+![Alt](images/unity_ui.jpg)
 
 **Note:**
 - The integration of unity catalog with other services like Spark and Trino is still a work-in-progress.
@@ -98,9 +107,13 @@ docker compose up -d spark
 - Spark Master for submitting jobs: http://localhost:7077
 - Spark History Server: http://localhost:18080
 
+![Alt](images/spark_master_ui.png)
+
 **Note:**
-- The integration with unity Catalog is still a work-in-progress.
+- **The integration with unity Catalog is still a work-in-progress**.
 - The python scripts in `spark/seed/` directory can be accessed in the Jupyter Notebook environment to run.
+
+![Alt](images/jupyter_seed.png)
 
 ## 6. Trino
 
@@ -119,9 +132,13 @@ make run_trino
 ```
 - Trino UI: http://localhost:8080
 
+![Alt](images/trino_ui.jpg)
+
 **Usage:**
 - The trino server configs and the connectors are located in `trino/etc/` directory.
 - You can also connect the trino cluster to your DBeaver Community edition for a GUI to run quries.
+
+![Alt](images/trino_dbeaver.jpg)
 
 ## 7. Apache Airflow
 
@@ -136,6 +153,8 @@ docker compose up -d airflow-apiserver airflow-scheduler airflow-dag-processor a
 make up_airflow
 ```
 - Airflow Web UI: http://localhost:8088 (user: `airflow` | password: `airflow`)
+
+![Alt](images/airflow_ui.jpg)
 
 ## Teardown
 
@@ -155,7 +174,57 @@ docker compose down --volumes
 ```
 
 
-## Contributing & License
+# Demo
+
+## 1. Getting started with sample data (spark + nessie + minio)
+
+In `data` directory there is a sample data file which is automatically loaded into the minio `seed` buckent when you spol up the service. We will be using that sample data and create an Iceberg table using spark.
+
+1. Make sure you have spark, nessie, postgres (used by nessie as a backend DB) and minio services up and running.
+
+2. Now, you need to open you Jupyter notebook environment (http://localhost:8888) and open `/seed/nessie/iceberg_DDL.ipynb` file.
+
+![Alt](images/spark_nessie_ddl.png)
+
+3. Run all the cells in this notebook and after it runs successfully you can see that a new table named `flights` is created in nessie catalog and you can see the data in minio `nessie` bucket and the table metadata on nessie catalog UI as well.
+
+![Alt](images/spark_nessie_ddl_run.png)
+![Alt](images/nessie_spark.png)
+![Alt](images/minio_nessie.png)
+
+## 2. Using Trino to query the sample data (trino + nessie + minio)
+
+Now you can query the Iceberg table created by the spark job or the metadata created by nessie catalog in the Postgres database. 
+
+1. Make sure you have trino, nessie, postgres and minio services are up and running.
+
+2. You can use the trino CLI to query the data. Follow the commads executed in the images below to view the data.
+
+![Alt](images/trino_nessie_postgres.png)
+
+3. Instead of using CLI you can query the data from DBeaver Community edition as well!
+
+![Alt](images/trino_dbeaver_run.jpg)
+
+## 3. Using pgAdmin to query data from Postgres DB (postgres + pgadmin)
+
+1. Make sure you have postgres and pgadmin services are up and running.
+
+2. You can query the tables created by nessie catalog or aiflow.
+
+![Alt](images/pgadmin_nessie.jpg)
+
+## 4. Unity Catalog CLI and Trino (unity + trino)
+
+As of now, the data from unity catalog default tables can only be read using the unity catalogs' CLI.
+
+![Alt](images/unity_cli.jpg)
+
+**Note:** Unity catalog also offers an IcebergREST API which can be used to connect to trino. The unity catalog integration with spark is also a work-in-progress currently.
+
+![ALt](images/trino_unity.png)
+
+# Contributing & License
 
 Feel free to open issues or PRs. This project is under the MIT License. See [LICENSE](LICENSE).
 
