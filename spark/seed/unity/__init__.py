@@ -11,6 +11,7 @@ AWS_REGION = os.environ["AWS_REGION"]
 conf = (
     SparkConf()
         .setAppName('spark_unity_catalog_delta_lake')
+        .setMaster('spark://spark:7077')
         .set(
         'spark.jars.packages',
         'io.delta:delta-spark_2.12:3.3.1,'

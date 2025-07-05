@@ -52,7 +52,7 @@ services:
       mc alias set myminio http://localhost:9000 ${MINIO_USER_USERNAME} ${MINIO_USER_PASSWORD};
       mc admin accesskey create myminio/ --access-key ${AWS_ACCESS_KEY_ID} --secret-key ${AWS_SECRET_ACCESS_KEY} --description 'Access key for docker environment';
       mc mb myminio/seed;
-      mc cp /seed/* myminio/seed/;
+      mc cp -r /seed/* myminio/seed/;
       mc mb myminio/${NESSIE_BUCKET};
       mc mb myminio/${UNITY_BUCKET};
       tail -f /dev/null"
@@ -200,17 +200,23 @@ services:
     #   dockerfile: Dockerfile
     image: vinayramg/spark-nb_v3.5.5:latest
     container_name: spark
-    mem_limit: 8g
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
     depends_on:
       - nessie
       - unity-ui
       - minio
     env_file:
       - .env
+      # - ./spark/.env.spark
     ports:
       - "8082:8080"             # Master Web UI (exposed to 8082 instead of 8080)
       - "7077:7077"             # Master Port for job submissions
       - "18080:18080"           # Spark History Server
+      - "4040-4050:4040-4050"  # Driver UIs (one port per SparkContext)
       - "8888:8888"             # Jupyter Notebook
     environment:
       - AWS_REGION=us-east-1
@@ -221,12 +227,49 @@ services:
       - PYTHONPATH=/opt/bitnami/workspace/seed
     volumes:
       - ./spark/seed:/opt/bitnami/workspace/seed
+      - spark-logs:/tmp/spark-events
+    healthcheck:
+      test: ["CMD-SHELL", "if bash -c '</dev/tcp/localhost/8080' && bash -c '</dev/tcp/localhost/8888'; then exit 0; else exit 1; fi"]
+      interval: 15s
+      timeout: 15s
+      retries: 5
+      start_period: 30s
     entrypoint: >
       /bin/bash -c "
       /opt/bitnami/spark/sbin/start-master.sh && \
       mkdir -p /tmp/spark-events && \
       /opt/bitnami/spark/sbin/start-history-server.sh && \
       jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password='' && \
+      tail -f /dev/null
+      "
+    networks:
+      - lakehouse-network
+  
+  spark-worker:
+    image: vinayramg/spark-nb_v3.5.5:latest
+    # container_name: spark-worker
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+    depends_on:
+      spark:
+        condition: service_healthy
+    env_file:
+      - .env
+      - ./spark/.env.spark
+    # ports:
+    #   - "8081:8081"             # Worker Web UI
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/8081'"]
+      interval: 15s
+      timeout: 15s
+      retries: 5
+      start_period: 30s
+    entrypoint: >
+      /bin/bash -c "
+      /opt/bitnami/spark/sbin/start-worker.sh spark://spark:7077 --cores 2 --memory 4g && \
       tail -f /dev/null
       "
     networks:
@@ -406,3 +449,4 @@ volumes:
   pgadata:
   udata:
   udb:
+  spark-logs:
