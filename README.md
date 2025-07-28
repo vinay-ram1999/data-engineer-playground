@@ -35,7 +35,6 @@ docker compose up -d minio
 
 **Note:**
 - On startup, files in `data/` are seeded into bucket `seed`.
-
 ![Alt](images/minio_init.jpg)
 
 
@@ -54,7 +53,6 @@ docker compose up -d postgres pgadmin
 **Note:**
 - The default database schema in postgres is set to `public` so all the tables created by Nessie/Airflow can be found under this database schema.
 - To view this database in pgAdmin the credentials are (user:`pgadmin` | password: `pgadmin`)
-
 ![Alt](images/pgadmin_cred.jpg)
 
 ## 3. Nessie Catalog
@@ -67,7 +65,6 @@ Project Nessie offers a Git-like catalog for table versions (e.g., Apache Iceber
 docker compose up -d nessie
 ```
 - Nessie UI: http://localhost:19120
-
 ![Alt](images/nessie_ui.png)
 
 ## 4. Unity Catalog OSS (Server & UI)
@@ -81,7 +78,6 @@ docker compose up -d unity unity-ui
 ```
 - Unity Server API: http://localhost:8085
 - Unity UI: http://localhost:3000
-
 ![Alt](images/unity_ui.jpg)
 
 **Note:**
@@ -100,19 +96,39 @@ Spark is a multi-language big data processing enginer and this sevice runs a Spa
 
 **Setup:**
 ```bash
-docker compose up -d spark
+# To run a spark cluster with single worker node
+docker compose up -d spark spark-history spark-worker
+
+# Or you can run the following make command
+make up_spark
 ```
-- Jupyter Lab: http://localhost:8888
+
 - Spark Master UI: http://localhost:8082
+![Alt](images/spark_master_ui.png)
+
 - Spark Master for submitting jobs: http://localhost:7077
 - Spark History Server: http://localhost:18080
+![Alt](images/spark_history.png)
+![Alt](images/spark_job_ui.png)
 
-![Alt](images/spark_master_ui.png)
+- Jupyter Lab: http://localhost:8888
+![Alt](images/jupyter_lab.png)
+
+**Scaled Setup:**
+```bash
+# To run a spark cluster with three worker nodes
+docker compose up -d spark spark-history spark-worker --scale spark-worker=3
+
+# Or you can run the following make command
+make up_spark_scaled
+```
+
+- Spark Master UI (Scaled with 3 worker nodes): http://localhost:8082
+![Alt](images/spark_master_ui_scaled.png)
 
 **Note:**
 - **The integration with unity Catalog is still a work-in-progress**.
 - The python scripts in `spark/seed/` directory can be accessed in the Jupyter Notebook environment to run.
-
 ![Alt](images/jupyter_seed.png)
 
 ## 6. Trino
@@ -131,13 +147,11 @@ docker exec -it trino /bin/trino
 make run_trino
 ```
 - Trino UI: http://localhost:8080
-
 ![Alt](images/trino_ui.jpg)
 
 **Usage:**
 - The trino server configs and the connectors are located in `trino/etc/` directory.
 - You can also connect the trino cluster to your DBeaver Community edition for a GUI to run quries.
-
 ![Alt](images/trino_dbeaver.jpg)
 
 ## 7. Apache Airflow
@@ -153,7 +167,6 @@ docker compose up -d airflow-apiserver airflow-scheduler airflow-dag-processor a
 make up_airflow
 ```
 - Airflow Web UI: http://localhost:8088 (user: `airflow` | password: `airflow`)
-
 ![Alt](images/airflow_ui.jpg)
 
 ## Teardown

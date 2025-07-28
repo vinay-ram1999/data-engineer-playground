@@ -200,33 +200,26 @@ services:
     #   dockerfile: Dockerfile
     image: vinayramg/spark-nb_v3.5.5:latest
     container_name: spark
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 2G
     depends_on:
       - nessie
       - unity-ui
       - minio
     env_file:
       - .env
-      # - ./spark/.env.spark
     ports:
       - "8082:8080"             # Master Web UI (exposed to 8082 instead of 8080)
       - "7077:7077"             # Master Port for job submissions
-      - "18080:18080"           # Spark History Server
-      - "4040-4050:4040-4050"  # Driver UIs (one port per SparkContext)
       - "8888:8888"             # Jupyter Notebook
     environment:
       - AWS_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - SPARK_MASTER_HOST=spark
-      - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=/tmp/spark-events
       - PYTHONPATH=/opt/bitnami/workspace/seed
+      # - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=/tmp/spark-events
     volumes:
       - ./spark/seed:/opt/bitnami/workspace/seed
+      - ./spark/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
       - spark-logs:/tmp/spark-events
     healthcheck:
       test: ["CMD-SHELL", "if bash -c '</dev/tcp/localhost/8080' && bash -c '</dev/tcp/localhost/8888'; then exit 0; else exit 1; fi"]
@@ -236,10 +229,38 @@ services:
       start_period: 30s
     entrypoint: >
       /bin/bash -c "
+      mkdir -p /tmp/spark-events && \
       /opt/bitnami/spark/sbin/start-master.sh && \
+      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password='' && \
+      tail -f /dev/null
+      "
+    networks:
+      - lakehouse-network
+  
+  spark-history:
+    image: vinayramg/spark-nb_v3.5.5:latest
+    container_name: spark-history
+    depends_on:
+      spark:
+        condition: service_healthy
+    env_file:
+      - .env
+      - ./spark/.env.spark
+    ports:
+      - "18080:18080"           # Spark History Server
+    volumes:
+      - spark-logs:/tmp/spark-events
+      - ./spark/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/18080'"]
+      interval: 15s
+      timeout: 15s
+      retries: 5
+      start_period: 30s
+    entrypoint: >
+      /bin/bash -c "
       mkdir -p /tmp/spark-events && \
       /opt/bitnami/spark/sbin/start-history-server.sh && \
-      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password='' && \
       tail -f /dev/null
       "
     networks:
@@ -248,19 +269,26 @@ services:
   spark-worker:
     image: vinayramg/spark-nb_v3.5.5:latest
     # container_name: spark-worker
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 4G
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 4G
     depends_on:
       spark:
+        condition: service_healthy
+      spark-history:
         condition: service_healthy
     env_file:
       - .env
       - ./spark/.env.spark
     # ports:
-    #   - "8081:8081"             # Worker Web UI
+      # - "8081:8081"             # Worker Web UI
+      # - "4040-4050:4040-4050"   # Driver UIs (one port per SparkContext)
+    volumes:
+      - ./spark/seed:/opt/bitnami/workspace/seed
+      - ./spark/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
+      - spark-logs:/tmp/spark-events
     healthcheck:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/8081'"]
       interval: 15s
@@ -269,7 +297,8 @@ services:
       start_period: 30s
     entrypoint: >
       /bin/bash -c "
-      /opt/bitnami/spark/sbin/start-worker.sh spark://spark:7077 --cores 2 --memory 4g && \
+      mkdir -p /tmp/spark-events && \
+      /opt/bitnami/spark/sbin/start-worker.sh spark://spark:7077 --cores 4 --memory 4g && \
       tail -f /dev/null
       "
     networks:

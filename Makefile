@@ -14,7 +14,7 @@ stop_airflow:
 	$(DC) stop airflow-apiserver airflow-scheduler airflow-dag-processor airflow-triggerer
 
 start_airflow: 
-	$(DC) start -d airflow-apiserver airflow-scheduler airflow-dag-processor airflow-triggerer
+	$(DC) start airflow-apiserver airflow-scheduler airflow-dag-processor airflow-triggerer
 
 down_airflow: 
 	$(DC) down airflow-apiserver airflow-scheduler airflow-dag-processor airflow-triggerer
@@ -24,3 +24,21 @@ down_airflow:
 
 spark_submit:
 	docker exec spark spark-submit --master spark://spark:7077 --deploy-mode client ./apps/$(app)
+
+stop_spark: 
+	$(DC) stop spark spark-history spark-worker
+
+start_spark: 
+	$(DC) start spark spark-history spark-worker
+
+down_spark: 
+	$(DC) down spark spark-history spark-worker
+
+down_spark_worker: 
+	$(DC) down spark-worker
+
+up_spark:
+	make down_spark_worker && $(DC) up -d spark-worker
+
+up_spark_scaled:
+	make down_spark_worker && $(DC) up -d spark-worker --scale spark-worker=3
