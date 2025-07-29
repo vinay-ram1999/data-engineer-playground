@@ -12,9 +12,17 @@ This documentation covers the services defined in the `docker-compose.yml` and h
 - Basic understanding of how Docker containers works (not mandatory).
 - Clone this repo and copy the environment template:
   ```bash
+  # Clone this repository
   git clone git@github.com:vinay-ram1999/data-engineer-playground.git
+
+  # Change working directory to cloned directory
   cd data-engineer-playground
+
+  # create .env file from sample.env
   cp sample.env .env
+
+  # Download the necessary jar files required for spark config
+  make fetch_jars
   ```
 
 # Services
@@ -34,9 +42,12 @@ docker compose up -d minio
 - API endpoint: http://localhost:9000
 
 **Note:**
-- On startup, files in `data/` are seeded into bucket `seed`.
-![Alt](images/minio_init.jpg)
+- On startup, files in `data/` are seeded into bucket `seed` and two empty buckets (`nessie` and `unity`) are created.
+![Alt](images/minio_init.png)
 
+- Make sure to run `make fetch_jars` as mentioned in [Prerequisites](#prerequisites) before initiating MinIo service so that the jar files are added to `seed` bucket.
+![Alt](images/minio_jars.png)
+These jar objects are used to configure the spark session avoiding the need to download them whenever a new session is created or when the docker containers are restarted.
 
 ## 2. PostgreSQL & pgAdmin
 

@@ -8,20 +8,24 @@ AWS_SECRET_ACCESS_KEY = os.environ["AWS_SECRET_ACCESS_KEY"]
 AWS_S3_ENDPOINT = os.environ["AWS_S3_ENDPOINT"]
 AWS_REGION = os.environ["AWS_REGION"]
 
+jar_paths = [
+    "s3a://seed/jars/aws-java-sdk-bundle-1.12.365.jar",
+    "s3a://seed/jars/hadoop-aws-3.3.4.jar",
+    "s3a://seed/jars/unitycatalog-spark_2.12-0.2.1.jar",
+    "s3a://seed/jars/unitycatalog-client-0.3.0.jar",
+    "s3a://seed/jars/slf4j-simple-2.0.7.jar",
+    "s3a://seed/jars/bundle-2.29.52.jar",
+    "s3a://seed/jars/iceberg-spark-runtime-3.5_2.12-1.8.1.jar",
+    "s3a://seed/jars/delta-spark_2.12-3.3.1.jar",
+    "s3a://seed/jars/slf4j-api-2.0.7.jar",
+    "s3a://seed/jars/wildfly-openssl-1.0.7.Final.jar"
+]
+
 conf = (
     SparkConf()
         .setAppName('spark_unity_catalog_delta_lake')
         .setMaster('spark://spark:7077')
-        .set(
-        'spark.jars.packages',
-        'io.delta:delta-spark_2.12:3.3.1,'
-        'io.unitycatalog:unitycatalog-spark_2.12:0.2.1,'
-        'org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.1,'
-        'software.amazon.awssdk:bundle:2.29.52,'
-        'org.slf4j:slf4j-simple:2.0.7,'
-        'org.apache.hadoop:hadoop-aws:3.3.4,'
-        'com.amazonaws:aws-java-sdk-bundle:1.12.365'
-        )
+        .set("spark.jars", ",".join(jar_paths))
         .set("spark.jars.excludes", "org.slf4j:slf4j-log4j12")
         .set(
             'spark.sql.extensions',

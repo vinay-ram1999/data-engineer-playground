@@ -1,6 +1,9 @@
 # Docker Compose wrapper
 DC = docker compose
 
+fetch_jars:
+	bash download_jars.sh
+
 run_unity:
 	docker exec -it unity /bin/bash
 
