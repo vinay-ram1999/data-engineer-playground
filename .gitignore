@@ -5,6 +5,9 @@
 */__pycache__/*
 */node_modules/*
 
+data/*
+!data/flights-1m.parquet
+
 minio/*
 !minio/.gitkeep
 
